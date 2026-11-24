@@ -91,6 +91,12 @@ let package = Package(
         .executableTarget(
             name: "RoyalVNCKitCDemo",
             dependencies: [ "RoyalVNCKit" ]
+        ),
+
+        .testTarget(
+            name: "RoyalVNCKitTests",
+            dependencies: [ "RoyalVNCKit" ],
+            swiftSettings: [ .swiftLanguageMode(swiftLanguageMode) ]
         )
     ]
 )

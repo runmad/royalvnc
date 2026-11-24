@@ -1,33 +1,39 @@
-#if canImport(FoundationEssentials)
-import FoundationEssentials
-#else
 import Foundation
-#endif
 
-struct Queue<T> {
+/// Thread-safe: the app enqueues from its own thread while the send loop dequeues on another.
+final class Queue<T>: @unchecked Sendable {
+	private let lock = NSLock()
 	private var list = [T]()
 
-	mutating func enqueue(_ element: T) {
+	func enqueue(_ element: T) {
+		lock.lock(); defer { lock.unlock() }
+
 		list.append(element)
 	}
 
-	mutating func dequeue() -> T? {
-		guard !isEmpty else { return nil }
+	func dequeue() -> T? {
+		lock.lock(); defer { lock.unlock() }
+
+		guard !list.isEmpty else { return nil }
 
 		return list.removeFirst()
 	}
 
-	mutating func clear() {
+	func clear() {
+		lock.lock(); defer { lock.unlock() }
+
 		list.removeAll()
 	}
 
 	func peek() -> T? {
-		guard !isEmpty else { return nil }
+		lock.lock(); defer { lock.unlock() }
 
-		return list[0]
+		return list.first
 	}
 
 	var isEmpty: Bool {
-		list.isEmpty
+		lock.lock(); defer { lock.unlock() }
+
+		return list.isEmpty
 	}
 }
