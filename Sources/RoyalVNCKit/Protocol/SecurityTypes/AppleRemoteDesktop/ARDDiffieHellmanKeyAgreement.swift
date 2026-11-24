@@ -28,7 +28,8 @@ extension VNCProtocol.ARDAuthentication {
 
 			guard let secretKey = Self.computeSharedKey(prime: prime,
 														peerKey: peerKey,
-														privateKey: keyPair.privateKey),
+														privateKey: keyPair.privateKey)
+					.flatMap({ Self.leftPadded($0, to: keyLength) }),
 				  !secretKey.isEmpty else {
 				return nil
 			}
@@ -41,6 +42,13 @@ extension VNCProtocol.ARDAuthentication {
 }
 
 private extension VNCProtocol.ARDAuthentication.DiffieHellmanKeyAgreement {
+	/// Returns nil if `data` is longer than `length`.
+	static func leftPadded(_ data: Data, to length: Int) -> Data? {
+		guard data.count <= length else { return nil }
+
+		return Data(repeating: 0, count: length - data.count) + data
+	}
+
 	struct KeyPair {
 		let publicKey: Data
 		let privateKey: Data
@@ -75,14 +83,10 @@ private extension VNCProtocol.ARDAuthentication.DiffieHellmanKeyAgreement {
 			return nil
 		}
 
-		// Check key lengths of generated private and public DH keys
-		guard bigPrivKey.bytesCount == keyLength,
-			  bigPubKey.bytesCount == keyLength else {
-			return nil
-		}
-
-		guard let privKey = bigPrivKey.bigEndianData(),
-			  let pubKey = bigPubKey.bigEndianData() else {
+		// BigNum serialization drops leading zero bytes (about 1 in 128 keys), but the
+		// protocol expects fixed-width keys, so left-pad instead of rejecting.
+		guard let privKey = bigPrivKey.bigEndianData().flatMap({ leftPadded($0, to: keyLength) }),
+			  let pubKey = bigPubKey.bigEndianData().flatMap({ leftPadded($0, to: keyLength) }) else {
 			return nil
 		}
 
